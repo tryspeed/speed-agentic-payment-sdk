@@ -1,0 +1,12 @@
+{
+  "name": "@tryspeed/l402-express",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "Express middleware for L402 Lightning Network payments — issues Speed payment challenges, verifies macaroon credentials, and gates API access to paid requests only",
+  "type": "module"
+}

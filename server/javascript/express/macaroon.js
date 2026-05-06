@@ -1,12 +1,10 @@
 import pkg from 'macaroon';
 const { newMacaroon } = pkg;
-import { config } from "dotenv";
 import { decode } from 'light-bolt11-decoder';
-import { MACAROON_VERSION, CAVEAT_KEYS, ENV_VARS } from './constants.js';
-config();
+import { MACAROON_VERSION, CAVEAT_KEYS } from './constants.js';
 
 
-export function createMacaroon(routeConfig, bolt11Invoice) {
+export function createMacaroon(routeConfig, bolt11Invoice, macaroonSecret) {
   const paymentHashSection = decode(bolt11Invoice).sections.find(s => s.name === CAVEAT_KEYS.PAYMENT_HASH);
   if (!paymentHashSection) {
     throw new Error('Invalid BOLT11 invoice: missing payment_hash');
@@ -14,7 +12,7 @@ export function createMacaroon(routeConfig, bolt11Invoice) {
   const paymentHash = paymentHashSection.value;
   const macaroon = newMacaroon({
     version: MACAROON_VERSION,
-    rootKey: Buffer.from(process.env[ENV_VARS.SPEED_MACAROON_SECRET], 'hex'),
+    rootKey: Buffer.from(macaroonSecret, 'hex'),
     identifier: crypto.randomUUID(),
   });
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.METHOD} = ${routeConfig.method}`);
@@ -25,9 +23,9 @@ export function createMacaroon(routeConfig, bolt11Invoice) {
   return Buffer.from(JSON.stringify(serializedMacaroon)).toString('base64');
 }
 
-export function verifyMacaroon(macaroon, routeConfig) {
+export function verifyMacaroon(macaroon, routeConfig, macaroonSecret) {
   macaroon.verify(
-    Buffer.from(process.env[ENV_VARS.SPEED_MACAROON_SECRET], 'hex'),
+    Buffer.from(macaroonSecret, 'hex'),
     (caveat) => {
       if (caveat === `${CAVEAT_KEYS.METHOD} = ${routeConfig.method}`) return;
       if (caveat === `${CAVEAT_KEYS.PATH} = ${routeConfig.path}`) return;

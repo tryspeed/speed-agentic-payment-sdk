@@ -8,5 +8,10 @@
   "author": "",
   "license": "MIT",
   "description": "Express middleware for L402 Lightning Network payments — issues Speed payment challenges, verifies macaroon credentials, and gates API access to paid requests only",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "light-bolt11-decoder": "^3.2.0",
+    "macaroon": "^3.0.4",
+    "node-cache": "^5.1.2"
+  }
 }

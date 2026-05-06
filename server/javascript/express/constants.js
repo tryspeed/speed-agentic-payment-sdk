@@ -21,6 +21,6 @@ export const ENV_VARS = {
     SPEED_BASE_URL: 'SPEED_BASE_URL',
 };
 
-export const SPEED_BASE_URL = process.env[ENV_VARS.SPEED_BASE_URL] || 'https://api.tryspeed.com';
+export const SPEED_BASE_URL = 'https://api.tryspeed.com';
 export const SPEED_CURRENCY = 'SATS';
 export const SPEED_PAYMENT_METHOD = 'lightning';

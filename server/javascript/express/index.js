@@ -8,43 +8,7 @@ import { ERROR_MESSAGES } from './errors.js';
 const cache = new NodeCache();
 const lock = new Map();
 
-function getEndpointConfig(request, endpointConfigMap) {
-    return endpointConfigMap.get(request.method + " " + request.path);
-}
-
-function isFreeEndpoint(endpointConfig) {
-    return (endpointConfig == undefined || endpointConfig.sats == 0);
-}
-
-function isPaymentMissing(request) {
-    const authorizationHeader = request.headers[HEADERS.AUTHORIZATION];
-    return !authorizationHeader?.trim();
-}
-
-async function isPreimageValid(macaroon, receivedPreimage) {
-    const paymentHash = getPaymentHash(macaroon);
-    const receivedPaymentHash = await computePreimageHash(receivedPreimage);
-    return paymentHash === receivedPaymentHash;
-}
-
-async function computePreimageHash(preimage) {
-    const hashBuffer = await crypto.subtle.digest(HASH_ALGORITHM, Buffer.from(preimage, 'hex'));
-    return Buffer.from(hashBuffer).toString("hex");
-}
-
-function getPaymentHash(macaroon) {
-    const decoder = new TextDecoder();
-
-    const caveat = macaroon.caveats.find(c =>
-        decoder.decode(c.identifier).startsWith(`${CAVEAT_KEYS.PAYMENT_HASH} = `)
-    );
-
-    return caveat
-        ? decoder.decode(caveat.identifier).split(' = ')[1]
-        : null;
-}
-
-export default (configs) => {
+const l402Middleware = ({ speedApiKey, speedBaseUrl, macaroonSecret, configs }) => {
     const endpointConfigMap = new Map();
     for (const config of configs) {
         endpointConfigMap.set(config.method + " " + config.path, config);
@@ -59,12 +23,13 @@ export default (configs) => {
         }
         if (isPaymentMissing(request)) {
             try {
-                const invoiceResponse = await createSpeedInvoice(endpointConfig.sats);
+                const invoiceResponse = await createSpeedInvoice(endpointConfig.sats, speedApiKey, speedBaseUrl);
                 const lightningInvoice = invoiceResponse.payment_method_options.lightning.payment_request;
-                const macaroon = createMacaroon(endpointConfig, lightningInvoice);
+                const macaroon = createMacaroon(endpointConfig, lightningInvoice, macaroonSecret);
                 response.status(402).set(HEADERS.WWW_AUTHENTICATE, `${L402_SCHEME} macaroon="${macaroon}", invoice="${lightningInvoice}"`).json({});
             }
             catch (err) {
+                console.error(err);
                 response.status(500).json({ message: ERROR_MESSAGES.INTERNAL_SERVER_ERROR });
             }
             return;
@@ -96,7 +61,7 @@ export default (configs) => {
             }
             lock.set(paymentHash, true);
 
-            verifyMacaroon(macaroon, endpointConfig);
+            verifyMacaroon(macaroon, endpointConfig, macaroonSecret);
             const preimageValid = await isPreimageValid(macaroon, receivedPreimage);
             if (preimageValid) {
                 const originalSend = response.send.bind(response);
@@ -104,11 +69,14 @@ export default (configs) => {
                     cache.set(paymentHash, { body, contentType: response.getHeader('Content-Type'), status: response.statusCode });
                     return originalSend(body);
                 };
+                response.on('finish', () => {
+                    lock.delete(paymentHash);
+                });
                 next();
             } else {
+                lock.delete(paymentHash);
                 response.status(401).json({ message: ERROR_MESSAGES.INVALID_PREIMAGE });
             }
-            lock.delete(paymentHash);
         } catch (error) {
             console.error(error);
             response.status(400).json({ message: ERROR_MESSAGES.MALFORMED_AUTH_HEADER });
@@ -118,3 +86,41 @@ export default (configs) => {
         }
     }
 };
+
+function getEndpointConfig(request, endpointConfigMap) {
+    return endpointConfigMap.get(request.method + " " + request.path);
+}
+
+function isFreeEndpoint(endpointConfig) {
+    return (endpointConfig == undefined || endpointConfig.sats == 0);
+}
+
+function isPaymentMissing(request) {
+    const authorizationHeader = request.headers[HEADERS.AUTHORIZATION];
+    return !authorizationHeader?.trim();
+}
+
+function getPaymentHash(macaroon) {
+    const decoder = new TextDecoder();
+
+    const caveat = macaroon.caveats.find(c =>
+        decoder.decode(c.identifier).startsWith(`${CAVEAT_KEYS.PAYMENT_HASH} = `)
+    );
+
+    return caveat
+        ? decoder.decode(caveat.identifier).split(' = ')[1]
+        : null;
+}
+
+async function computePreimageHash(preimage) {
+    const hashBuffer = await crypto.subtle.digest(HASH_ALGORITHM, Buffer.from(preimage, 'hex'));
+    return Buffer.from(hashBuffer).toString("hex");
+}
+
+async function isPreimageValid(macaroon, receivedPreimage) {
+    const paymentHash = getPaymentHash(macaroon);
+    const receivedPaymentHash = await computePreimageHash(receivedPreimage);
+    return paymentHash === receivedPaymentHash;
+}
+
+export default l402Middleware;

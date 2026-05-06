@@ -1,17 +1,6 @@
-import { config } from "dotenv";
-import { SPEED_BASE_URL, SPEED_CURRENCY, SPEED_PAYMENT_METHOD, ENV_VARS } from './constants.js';
+import { SPEED_BASE_URL, SPEED_CURRENCY, SPEED_PAYMENT_METHOD } from './constants.js';
 
-config();
-
-
-function buildRequestHeaders() {
-    return {
-        "Authorization": `Basic ${process.env[ENV_VARS.SPEED_KEY]}`,
-        "Content-Type": "application/json",
-    };
-}
-
-export async function createSpeedInvoice(sats) {
+export async function createSpeedInvoice(sats, apiKey, baseUrl = SPEED_BASE_URL) {
     const invoicePayload = {
         amount: sats,
         currency: SPEED_CURRENCY,
@@ -19,8 +8,11 @@ export async function createSpeedInvoice(sats) {
         payment_methods: [SPEED_PAYMENT_METHOD]
     };
 
-    const apiResponse = await fetch(`${SPEED_BASE_URL}/payments`, {
-        headers: buildRequestHeaders(),
+    const apiResponse = await fetch(`${baseUrl}/payments`, {
+        headers: {
+            "Authorization": `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`,
+            "Content-Type": "application/json",
+        },
         method: "POST",
         body: JSON.stringify(invoicePayload)
     });

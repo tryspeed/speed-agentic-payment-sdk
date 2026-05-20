@@ -36,10 +36,14 @@ const l402Middleware = ({ speedApiKey, speedBaseUrl, macaroonSecret, configs }) 
         }
 
         const authorizationHeader = request.headers[HEADERS.AUTHORIZATION].trim();
-        const [encodedMacaroon, receivedPreimage] = authorizationHeader
-            .replace(L402_SCHEME, '')
-            .trim()
-            .split(':').map(s => s.trim());
+        const l402Match = authorizationHeader.match(
+            /^L402\s+([^:\s]+):([^:\s]+)$/i
+        );
+        if (!l402Match) {
+            response.status(400).json({ message: ERROR_MESSAGES.MALFORMED_AUTH_HEADER });
+        }
+
+        const [, encodedMacaroon, receivedPreimage] = l402Match;
 
         let paymentHash;
         try {

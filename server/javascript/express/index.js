@@ -8,7 +8,7 @@ import { ERROR_MESSAGES } from './errors.js';
 const cache = new NodeCache();
 const lock = new Map();
 
-const l402Middleware = ({ speedApiKey, speedBaseUrl, macaroonSecret, configs }) => {
+const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
     const endpointConfigMap = new Map();
     for (const config of configs) {
         endpointConfigMap.set(config.method + " " + config.path, config);
@@ -23,7 +23,7 @@ const l402Middleware = ({ speedApiKey, speedBaseUrl, macaroonSecret, configs }) 
         }
         if (isPaymentMissing(request)) {
             try {
-                const invoiceResponse = await createSpeedInvoice(endpointConfig.sats, speedApiKey, speedBaseUrl);
+                const invoiceResponse = await createSpeedInvoice(endpointConfig.currency, endpointConfig.amount, endpointConfig.targetCurrency, speedApiKey);
                 const lightningInvoice = invoiceResponse.payment_method_options.lightning.payment_request;
                 const macaroon = createMacaroon(endpointConfig, lightningInvoice, macaroonSecret);
                 response.status(402).set(HEADERS.WWW_AUTHENTICATE, `${L402_SCHEME} macaroon="${macaroon}", invoice="${lightningInvoice}"`).json({});
@@ -52,8 +52,11 @@ const l402Middleware = ({ speedApiKey, speedBaseUrl, macaroonSecret, configs }) 
                 Buffer.from(encodedMacaroon, 'base64').toString('utf8')
             );
             const macaroon = importMacaroon(macaroonObject);
-            paymentHash = getPaymentHash(macaroon);
 
+            verifyMacaroon(macaroon, endpointConfig, macaroonSecret);
+            const preimageValid = await isPreimageValid(macaroon, receivedPreimage);
+
+            paymentHash = extractCaveatFromMacaroon(macaroon, CAVEAT_KEYS.PAYMENT_HASH);
             const cachedResponse = cache.get(paymentHash);
             if (cachedResponse) {
                 response.status(cachedResponse.status).set('Content-Type', cachedResponse.contentType).send(cachedResponse.body);
@@ -66,12 +69,15 @@ const l402Middleware = ({ speedApiKey, speedBaseUrl, macaroonSecret, configs }) 
             }
             lock.set(paymentHash, true);
 
-            verifyMacaroon(macaroon, endpointConfig, macaroonSecret);
-            const preimageValid = await isPreimageValid(macaroon, receivedPreimage);
+
             if (preimageValid) {
+                const expiresAt = Number(extractCaveatFromMacaroon(macaroon, CAVEAT_KEYS.EXPIRES_AT));
                 const originalSend = response.send.bind(response);
                 response.send = (body) => {
-                    cache.set(paymentHash, { body, contentType: response.getHeader('Content-Type'), status: response.statusCode });
+                    const ttl = Math.floor((expiresAt - Date.now()) / 1000);
+                    if (ttl > 0) {
+                        cache.set(paymentHash, { body, contentType: response.getHeader('Content-Type'), status: response.statusCode }, ttl);
+                    }
                     return originalSend(body);
                 };
                 response.on('finish', () => {
@@ -105,11 +111,11 @@ function isPaymentMissing(request) {
     return !authorizationHeader?.trim();
 }
 
-function getPaymentHash(macaroon) {
+function extractCaveatFromMacaroon(macaroon, caveatKey) {
     const decoder = new TextDecoder();
 
     const caveat = macaroon.caveats.find(c =>
-        decoder.decode(c.identifier).startsWith(`${CAVEAT_KEYS.PAYMENT_HASH} = `)
+        decoder.decode(c.identifier).startsWith(`${caveatKey} = `)
     );
 
     return caveat
@@ -123,7 +129,7 @@ async function computePreimageHash(preimage) {
 }
 
 async function isPreimageValid(macaroon, receivedPreimage) {
-    const paymentHash = getPaymentHash(macaroon);
+    const paymentHash = extractCaveatFromMacaroon(macaroon, CAVEAT_KEYS.PAYMENT_HASH);
     const receivedPaymentHash = await computePreimageHash(receivedPreimage);
     return paymentHash === receivedPaymentHash;
 }

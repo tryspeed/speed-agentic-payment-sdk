@@ -1,7 +1,6 @@
-import pkg from 'macaroon';
-const { newMacaroon } = pkg;
+import { newMacaroon } from 'macaroon';
 import { decode } from 'light-bolt11-decoder';
-import { MACAROON_VERSION, CAVEAT_KEYS } from './constants.js';
+import { MACAROON_VERSION, CAVEAT_KEYS, TEN_MINUTES_IN_MS } from './constants.js';
 
 
 export function createMacaroon(routeConfig, bolt11Invoice, macaroonSecret) {
@@ -15,6 +14,7 @@ export function createMacaroon(routeConfig, bolt11Invoice, macaroonSecret) {
     rootKey: Buffer.from(macaroonSecret, 'hex'),
     identifier: crypto.randomUUID(),
   });
+  macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.EXPIRES_AT} = ${Date.now() + TEN_MINUTES_IN_MS}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.METHOD} = ${routeConfig.method}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.PATH} = ${routeConfig.path}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.SATS} = ${routeConfig.sats}`);
@@ -31,8 +31,12 @@ export function verifyMacaroon(macaroon, routeConfig, macaroonSecret) {
       if (caveat === `${CAVEAT_KEYS.PATH} = ${routeConfig.path}`) return;
       if (caveat === `${CAVEAT_KEYS.SATS} = ${routeConfig.sats}`) return;
 
-      const [caveatKey] = caveat.split(' = ');
+      const [caveatKey, caveatValue] = caveat.split(' = ');
       if (caveatKey === CAVEAT_KEYS.PAYMENT_HASH) return;
+      if (caveatKey === CAVEAT_KEYS.EXPIRES_AT) {
+        if (Date.now() > Number(caveatValue)) return `caveat not satisfied: ${caveat}`;
+        return;
+      }
 
       return `caveat not satisfied: ${caveat}`;
     },

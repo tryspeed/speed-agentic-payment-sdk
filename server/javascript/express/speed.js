@@ -1,14 +1,14 @@
 import { SPEED_BASE_URL, SPEED_CURRENCY, SPEED_PAYMENT_METHOD } from './constants.js';
 
-export async function createSpeedInvoice(sats, apiKey, baseUrl = SPEED_BASE_URL) {
+export async function createSpeedInvoice(currency, amount, targetCurrency, apiKey) {
     const invoicePayload = {
-        amount: sats,
-        currency: SPEED_CURRENCY,
-        target_currency: SPEED_CURRENCY,
+        currency,
+        amount,
+        target_currency: targetCurrency ?? SPEED_CURRENCY,
         payment_methods: [SPEED_PAYMENT_METHOD]
     };
 
-    const apiResponse = await fetch(`${baseUrl}/payments`, {
+    const apiResponse = await fetch(`${SPEED_BASE_URL}/payments`, {
         headers: {
             "Authorization": `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`,
             "Content-Type": "application/json",

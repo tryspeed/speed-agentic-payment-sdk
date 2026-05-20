@@ -5,6 +5,7 @@ export const CAVEAT_KEYS = {
     PATH: 'path',
     SATS: 'sats',
     PAYMENT_HASH: 'payment_hash',
+    EXPIRES_AT: 'expires_at'
 };
 
 export const HEADERS = {
@@ -21,6 +22,7 @@ export const ENV_VARS = {
     SPEED_BASE_URL: 'SPEED_BASE_URL',
 };
 
-export const SPEED_BASE_URL = 'https://api.tryspeed.com';
+export const SPEED_BASE_URL = 'https://api.tryspeed.dev';
 export const SPEED_CURRENCY = 'SATS';
 export const SPEED_PAYMENT_METHOD = 'lightning';
+export const TEN_MINUTES_IN_MS = 1000 * 60 * 10;

@@ -45,29 +45,27 @@ const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
         }
 
         const [, encodedMacaroon, receivedPreimage] = l402Match;
-
-        let paymentHash;
+        let macaroonIdentifier;
         try {
             const macaroonObject = JSON.parse(
                 Buffer.from(encodedMacaroon, 'base64').toString('utf8')
             );
             const macaroon = importMacaroon(macaroonObject);
-
+            macaroonIdentifier = Buffer.from(macaroon.identifier).toString("utf-8");
             verifyMacaroon(macaroon, endpointConfig, macaroonSecret);
             const preimageValid = await isPreimageValid(macaroon, receivedPreimage);
 
-            paymentHash = extractCaveatFromMacaroon(macaroon, CAVEAT_KEYS.PAYMENT_HASH);
-            const cachedResponse = cache.get(paymentHash);
+            const cachedResponse = cache.get(macaroonIdentifier);
             if (cachedResponse) {
                 response.status(cachedResponse.status).set('Content-Type', cachedResponse.contentType).send(cachedResponse.body);
                 return;
             }
 
-            if (lock.get(paymentHash)) {
+            if (lock.get(macaroonIdentifier)) {
                 response.status(409).json({ message: ERROR_MESSAGES.PAYMENT_ALREADY_PROCESSING });
                 return;
             }
-            lock.set(paymentHash, true);
+            lock.set(macaroonIdentifier, true);
 
 
             if (preimageValid) {
@@ -76,23 +74,23 @@ const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
                 response.send = (body) => {
                     const ttl = Math.floor((expiresAt - Date.now()) / 1000);
                     if (ttl > 0) {
-                        cache.set(paymentHash, { body, contentType: response.getHeader('Content-Type'), status: response.statusCode }, ttl);
+                        cache.set(macaroonIdentifier, { body, contentType: response.getHeader('Content-Type'), status: response.statusCode }, ttl);
                     }
                     return originalSend(body);
                 };
                 response.on('finish', () => {
-                    lock.delete(paymentHash);
+                    lock.delete(macaroonIdentifier);
                 });
                 next();
             } else {
-                lock.delete(paymentHash);
+                lock.delete(macaroonIdentifier);
                 response.status(401).json({ message: ERROR_MESSAGES.INVALID_PREIMAGE });
             }
         } catch (error) {
             console.error(error);
             response.status(400).json({ message: ERROR_MESSAGES.MALFORMED_AUTH_HEADER });
-            if (paymentHash && lock.has(paymentHash)) {
-                lock.delete(paymentHash);
+            if (macaroonIdentifier && lock.has(macaroonIdentifier)) {
+                lock.delete(macaroonIdentifier);
             }
         }
     }

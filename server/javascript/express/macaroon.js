@@ -17,7 +17,8 @@ export function createMacaroon(routeConfig, bolt11Invoice, macaroonSecret) {
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.EXPIRES_AT} = ${Date.now() + TEN_MINUTES_IN_MS}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.METHOD} = ${routeConfig.method}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.PATH} = ${routeConfig.path}`);
-  macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.SATS} = ${routeConfig.sats}`);
+  macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.AMOUNT} = ${routeConfig.amount}`);
+  macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.CURRENCY} = ${routeConfig.currency}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.PAYMENT_HASH} = ${paymentHash}`);
   const serializedMacaroon = macaroon.exportJSON();
   return Buffer.from(JSON.stringify(serializedMacaroon)).toString('base64');
@@ -29,7 +30,8 @@ export function verifyMacaroon(macaroon, routeConfig, macaroonSecret) {
     (caveat) => {
       if (caveat === `${CAVEAT_KEYS.METHOD} = ${routeConfig.method}`) return;
       if (caveat === `${CAVEAT_KEYS.PATH} = ${routeConfig.path}`) return;
-      if (caveat === `${CAVEAT_KEYS.SATS} = ${routeConfig.sats}`) return;
+      if (caveat === `${CAVEAT_KEYS.AMOUNT} = ${routeConfig.amount}`) return;
+      if (caveat === `${CAVEAT_KEYS.CURRENCY} = ${routeConfig.currency}`) return;
 
       const [caveatKey, caveatValue] = caveat.split(' = ');
       if (caveatKey === CAVEAT_KEYS.PAYMENT_HASH) return;

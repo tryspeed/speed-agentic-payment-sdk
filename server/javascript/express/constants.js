@@ -1,9 +1,10 @@
 export const MACAROON_VERSION = 2;
 
 export const CAVEAT_KEYS = {
+    AMOUNT: 'amount',
+    CURRENCY: 'currency',
     METHOD: 'method',
     PATH: 'path',
-    SATS: 'sats',
     PAYMENT_HASH: 'payment_hash',
     EXPIRES_AT: 'expires_at'
 };

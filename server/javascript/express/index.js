@@ -41,6 +41,7 @@ const l402Middleware = ({ speedApiKey, speedBaseUrl, macaroonSecret, configs }) 
         );
         if (!l402Match) {
             response.status(400).json({ message: ERROR_MESSAGES.MALFORMED_AUTH_HEADER });
+            return;
         }
 
         const [, encodedMacaroon, receivedPreimage] = l402Match;

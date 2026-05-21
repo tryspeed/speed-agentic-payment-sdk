@@ -3,4 +3,5 @@ export const ERROR_MESSAGES = {
     PAYMENT_ALREADY_PROCESSING: "Payment is already being processed",
     MALFORMED_AUTH_HEADER: "Malformed 'authorization' header",
     INVALID_PREIMAGE: "Invalid payment preimage",
+    TOO_MANY_CAVEATS: "Macaroon contains too many caveats",
 };

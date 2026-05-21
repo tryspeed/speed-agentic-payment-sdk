@@ -1,22 +1,29 @@
 import { importMacaroon } from 'macaroon';
+import { match } from 'path-to-regexp';
 import { createMacaroon, verifyMacaroon } from './macaroon.js';
 import { createSpeedInvoice } from './speed.js';
 import NodeCache from 'node-cache';
-import { CAVEAT_KEYS, HEADERS, L402_SCHEME, HASH_ALGORITHM } from './constants.js';
+import { CAVEAT_KEYS, HEADERS, L402_SCHEME, HASH_ALGORITHM, MAX_CAVEATS } from './constants.js';
 import { ERROR_MESSAGES } from './errors.js';
+import { validateOptions } from './validation.js';
 
-const cache = new NodeCache();
-const lock = new Map();
+const decoder = new TextDecoder();
 
 const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
-    const endpointConfigMap = new Map();
-    for (const config of configs) {
-        endpointConfigMap.set(config.method + " " + config.path, config);
-    }
+    validateOptions({ speedApiKey, macaroonSecret, configs });
+
+    const cache = new NodeCache();
+    const lock = new Map();
+
+    const endpointMatchers = configs.map(config => ({
+        method: config.method,
+        matchPath: match(config.path),
+        config,
+    }));
 
     return async (request, response, next) => {
 
-        const endpointConfig = getEndpointConfig(request, endpointConfigMap);
+        const endpointConfig = getEndpointConfig(request, endpointMatchers);
         if (isFreeEndpoint(endpointConfig)) {
             next();
             return;
@@ -51,6 +58,10 @@ const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
                 Buffer.from(encodedMacaroon, 'base64').toString('utf8')
             );
             const macaroon = importMacaroon(macaroonObject);
+            if (macaroon.caveats.length > MAX_CAVEATS) {
+                response.status(400).json({ message: ERROR_MESSAGES.TOO_MANY_CAVEATS });
+                return;
+            }
             macaroonIdentifier = Buffer.from(macaroon.identifier).toString("utf-8");
             verifyMacaroon(macaroon, endpointConfig, macaroonSecret);
             const preimageValid = await isPreimageValid(macaroon, receivedPreimage);
@@ -65,10 +76,9 @@ const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
                 response.status(409).json({ message: ERROR_MESSAGES.PAYMENT_ALREADY_PROCESSING });
                 return;
             }
-            lock.set(macaroonIdentifier, true);
-
 
             if (preimageValid) {
+                lock.set(macaroonIdentifier, true);
                 const expiresAt = Number(extractCaveatFromMacaroon(macaroon, CAVEAT_KEYS.EXPIRES_AT));
                 const originalSend = response.send.bind(response);
                 response.send = (body) => {
@@ -83,25 +93,25 @@ const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
                 });
                 next();
             } else {
-                lock.delete(macaroonIdentifier);
                 response.status(401).json({ message: ERROR_MESSAGES.INVALID_PREIMAGE });
             }
         } catch (error) {
             console.error(error);
             response.status(400).json({ message: ERROR_MESSAGES.MALFORMED_AUTH_HEADER });
-            if (macaroonIdentifier && lock.has(macaroonIdentifier)) {
-                lock.delete(macaroonIdentifier);
-            }
+            if (macaroonIdentifier) lock.delete(macaroonIdentifier);
         }
     }
 };
 
-function getEndpointConfig(request, endpointConfigMap) {
-    return endpointConfigMap.get(request.method + " " + request.path);
+function getEndpointConfig(request, endpointMatchers) {
+    const entry = endpointMatchers.find(
+        e => e.method === request.method && e.matchPath(request.path)
+    );
+    return entry?.config;
 }
 
 function isFreeEndpoint(endpointConfig) {
-    return (endpointConfig == undefined || endpointConfig.sats == 0);
+    return endpointConfig == undefined;
 }
 
 function isPaymentMissing(request) {
@@ -110,15 +120,12 @@ function isPaymentMissing(request) {
 }
 
 function extractCaveatFromMacaroon(macaroon, caveatKey) {
-    const decoder = new TextDecoder();
-
-    const caveat = macaroon.caveats.find(c =>
-        decoder.decode(c.identifier).startsWith(`${caveatKey} = `)
-    );
-
-    return caveat
-        ? decoder.decode(caveat.identifier).split(' = ')[1]
-        : null;
+    const prefix = `${caveatKey} = `;
+    for (const c of macaroon.caveats) {
+        const decoded = decoder.decode(c.identifier);
+        if (decoded.startsWith(prefix)) return decoded.slice(prefix.length);
+    }
+    return null;
 }
 
 async function computePreimageHash(preimage) {

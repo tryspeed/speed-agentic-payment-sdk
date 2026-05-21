@@ -27,3 +27,7 @@ export const SPEED_BASE_URL = 'https://api.tryspeed.dev';
 export const SPEED_CURRENCY = 'SATS';
 export const SPEED_PAYMENT_METHOD = 'lightning';
 export const TEN_MINUTES_IN_MS = 1000 * 60 * 10;
+
+export const VALID_TARGET_CURRENCIES = [SPEED_CURRENCY, 'USDT', 'USDC'];
+export const MAX_CAVEATS = 20;
+export const MACAROON_SECRET_HEX_LENGTH = 64;

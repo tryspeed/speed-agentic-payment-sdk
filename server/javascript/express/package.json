@@ -7,7 +7,7 @@
     "l402-generate-secret": "bin/generate-secret.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test specs/test.js"
   },
   "author": "Speed <support@tryspeed.com>",
   "license": "MIT",

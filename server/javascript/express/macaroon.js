@@ -1,9 +1,9 @@
 import { newMacaroon } from 'macaroon';
 import { decode } from 'light-bolt11-decoder';
-import { MACAROON_VERSION, CAVEAT_KEYS, TEN_MINUTES_IN_MS } from './constants.js';
+import { MACAROON_VERSION, CAVEAT_KEYS, DEFAULT_CAVEAT_TTL_MS } from './constants.js';
+import { randomUUID } from 'node:crypto';
 
-
-export function createMacaroon(routeConfig, bolt11Invoice, macaroonSecret) {
+export function createMacaroon(routeConfig, bolt11Invoice, macaroonSecret, caveatTtlMs) {
   const paymentHashSection = decode(bolt11Invoice).sections.find(s => s.name === CAVEAT_KEYS.PAYMENT_HASH);
   if (!paymentHashSection) {
     throw new Error('Invalid BOLT11 invoice: missing payment_hash');
@@ -12,14 +12,16 @@ export function createMacaroon(routeConfig, bolt11Invoice, macaroonSecret) {
   const macaroon = newMacaroon({
     version: MACAROON_VERSION,
     rootKey: Buffer.from(macaroonSecret, 'hex'),
-    identifier: crypto.randomUUID(),
+    identifier: randomUUID(),
   });
-  macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.EXPIRES_AT} = ${Date.now() + TEN_MINUTES_IN_MS}`);
+  const effectiveTtlMs = caveatTtlMs ?? DEFAULT_CAVEAT_TTL_MS;
+
+  macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.PAYMENT_HASH} = ${paymentHash}`);
+  macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.EXPIRES_AT} = ${Date.now() + effectiveTtlMs}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.METHOD} = ${routeConfig.method}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.PATH} = ${routeConfig.path}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.AMOUNT} = ${routeConfig.amount}`);
   macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.CURRENCY} = ${routeConfig.currency}`);
-  macaroon.addFirstPartyCaveat(`${CAVEAT_KEYS.PAYMENT_HASH} = ${paymentHash}`);
   const serializedMacaroon = macaroon.exportJSON();
   return Buffer.from(JSON.stringify(serializedMacaroon)).toString('base64');
 }

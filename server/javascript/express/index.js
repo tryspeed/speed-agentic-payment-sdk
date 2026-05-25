@@ -9,8 +9,8 @@ import { validateOptions } from './validation.js';
 
 const decoder = new TextDecoder();
 
-const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
-    validateOptions({ speedApiKey, macaroonSecret, configs });
+const l402Middleware = ({ speedApiKey, macaroonSecret, caveatTtlMs, configs }) => {
+    validateOptions({ speedApiKey, macaroonSecret, caveatTtlMs, configs });
 
     const cache = new NodeCache();
     const lock = new Map();
@@ -29,20 +29,14 @@ const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
             return;
         }
         if (isPaymentMissing(request)) {
-            try {
-                const invoiceResponse = await createSpeedInvoice(endpointConfig.currency, endpointConfig.amount, endpointConfig.targetCurrency, speedApiKey);
-                const lightningInvoice = invoiceResponse.payment_method_options.lightning.payment_request;
-                const macaroon = createMacaroon(endpointConfig, lightningInvoice, macaroonSecret);
-                response.status(402).set(HEADERS.WWW_AUTHENTICATE, `${L402_SCHEME} macaroon="${macaroon}", invoice="${lightningInvoice}"`).json({});
-            }
-            catch (err) {
-                console.error(err);
-                response.status(500).json({ message: ERROR_MESSAGES.INTERNAL_SERVER_ERROR });
-            }
+            await sendPaymentChallenge(response, endpointConfig, speedApiKey, macaroonSecret, caveatTtlMs);
             return;
         }
 
         const authorizationHeader = request.headers[HEADERS.AUTHORIZATION].trim();
+        if (authorizationHeader.length > 2048) {
+            return response.status(400).json({ message: ERROR_MESSAGES.MALFORMED_AUTH_HEADER });
+        }
         const l402Match = authorizationHeader.match(
             /^L402\s+([^:\s]+):([^:\s]+)$/i
         );
@@ -63,14 +57,15 @@ const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
                 return;
             }
             macaroonIdentifier = Buffer.from(macaroon.identifier).toString("utf-8");
-            verifyMacaroon(macaroon, endpointConfig, macaroonSecret);
-            const preimageValid = await isPreimageValid(macaroon, receivedPreimage);
 
             const cachedResponse = cache.get(macaroonIdentifier);
             if (cachedResponse) {
                 response.status(cachedResponse.status).set('Content-Type', cachedResponse.contentType).send(cachedResponse.body);
                 return;
             }
+
+            verifyMacaroon(macaroon, endpointConfig, macaroonSecret);
+            const preimageValid = await isPreimageValid(macaroon, receivedPreimage);
 
             if (lock.get(macaroonIdentifier)) {
                 response.status(409).json({ message: ERROR_MESSAGES.PAYMENT_ALREADY_PROCESSING });
@@ -102,6 +97,18 @@ const l402Middleware = ({ speedApiKey, macaroonSecret, configs }) => {
         }
     }
 };
+
+async function sendPaymentChallenge(response, endpointConfig, speedApiKey, macaroonSecret, caveatTtlMs) {
+    try {
+        const invoiceResponse = await createSpeedInvoice(endpointConfig.currency, endpointConfig.amount, endpointConfig.targetCurrency, speedApiKey);
+        const lightningInvoice = invoiceResponse.payment_method_options.lightning.payment_request;
+        const macaroon = createMacaroon(endpointConfig, lightningInvoice, macaroonSecret, caveatTtlMs);
+        response.status(402).set(HEADERS.WWW_AUTHENTICATE, `${L402_SCHEME} macaroon="${macaroon}", invoice="${lightningInvoice}"`).json({});
+    } catch (err) {
+        console.error(err);
+        response.status(500).json({ message: ERROR_MESSAGES.INTERNAL_SERVER_ERROR });
+    }
+}
 
 function getEndpointConfig(request, endpointMatchers) {
     const entry = endpointMatchers.find(

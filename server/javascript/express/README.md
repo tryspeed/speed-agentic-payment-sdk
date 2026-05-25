@@ -110,6 +110,7 @@ Any route not listed in `configs` passes through freely without a payment check.
 |---|---|---|---|
 | `speedApiKey` | `string` | Yes | Your Speed secret API key (`sk_test_…` or `sk_live_…`). |
 | `macaroonSecret` | `string` | Yes | 32-byte hex-encoded secret used to sign and verify macaroons. Generate one with `npx l402-generate-secret`. |
+| `caveatTtlMs` | `number` | No | Macaroon TTL in milliseconds. Defaults to 10 minutes when omitted. Must be a positive number if provided. |
 | `configs` | `RouteConfig[]` | Yes | Array of route-level payment rules. |
 
 ### RouteConfig

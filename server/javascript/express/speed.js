@@ -1,10 +1,10 @@
-import { SPEED_BASE_URL, SPEED_CURRENCY, SPEED_PAYMENT_METHOD } from './constants.js';
+import { SPEED_BASE_URL, DEFAULT_TARGET_CURRENCY, SPEED_PAYMENT_METHOD, FETCH_TIMEOUT_MS } from './constants.js';
 
 export async function createSpeedInvoice(currency, amount, targetCurrency, apiKey) {
     const invoicePayload = {
         currency,
         amount,
-        target_currency: targetCurrency ?? SPEED_CURRENCY,
+        target_currency: targetCurrency ?? DEFAULT_TARGET_CURRENCY,
         payment_methods: [SPEED_PAYMENT_METHOD]
     };
 
@@ -14,7 +14,8 @@ export async function createSpeedInvoice(currency, amount, targetCurrency, apiKe
             "Content-Type": "application/json",
         },
         method: "POST",
-        body: JSON.stringify(invoicePayload)
+        body: JSON.stringify(invoicePayload),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!apiResponse.ok) {
         const errorBody = await apiResponse.text();

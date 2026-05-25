@@ -14,20 +14,13 @@ export const HEADERS = {
     WWW_AUTHENTICATE: 'www-authenticate',
 };
 
-export const L402_SCHEME = 'L402';
+export const DEFAULT_CAVEAT_TTL_MS = 1000 * 60 * 10;
+export const DEFAULT_TARGET_CURRENCY = 'SATS';
 export const HASH_ALGORITHM = 'SHA-256';
-
-export const ENV_VARS = {
-    SPEED_KEY: 'SPEED_KEY',
-    SPEED_MACAROON_SECRET: 'SPEED_MACAROON_SECRET',
-    SPEED_BASE_URL: 'SPEED_BASE_URL',
-};
-
-export const SPEED_BASE_URL = 'https://api.tryspeed.dev';
-export const SPEED_CURRENCY = 'SATS';
-export const SPEED_PAYMENT_METHOD = 'lightning';
-export const TEN_MINUTES_IN_MS = 1000 * 60 * 10;
-
-export const VALID_TARGET_CURRENCIES = [SPEED_CURRENCY, 'USDT', 'USDC'];
-export const MAX_CAVEATS = 20;
+export const L402_SCHEME = 'L402';
 export const MACAROON_SECRET_HEX_LENGTH = 64;
+export const MAX_CAVEATS = 20;
+export const SPEED_BASE_URL = 'https://api.tryspeed.dev';
+export const SPEED_PAYMENT_METHOD = 'lightning';
+export const VALID_TARGET_CURRENCIES = [DEFAULT_TARGET_CURRENCY, 'USDT', 'USDC'];
+export const FETCH_TIMEOUT_MS = 10_000;

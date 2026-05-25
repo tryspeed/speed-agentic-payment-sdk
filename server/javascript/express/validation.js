@@ -2,7 +2,7 @@ import { VALID_TARGET_CURRENCIES, MACAROON_SECRET_HEX_LENGTH } from './constants
 
 const HEX_RE = new RegExp(`^[0-9a-fA-F]{${MACAROON_SECRET_HEX_LENGTH}}$`);
 
-export function validateOptions({ speedApiKey, macaroonSecret, configs }) {
+export function validateOptions({ speedApiKey, macaroonSecret, caveatTtlMs, configs }) {
     if (!speedApiKey || typeof speedApiKey !== 'string') {
         throw new Error('l402: speedApiKey must be a non-empty string');
     }
@@ -18,6 +18,11 @@ export function validateOptions({ speedApiKey, macaroonSecret, configs }) {
         throw new Error('l402: configs must be a non-empty array');
     }
 
+    if (caveatTtlMs !== undefined && (typeof caveatTtlMs !== 'number' || caveatTtlMs <= 0)) {
+        throw new Error('l402: caveatTtlMs must be a positive number');
+    }
+
+    const seen = new Set();
     for (let i = 0; i < configs.length; i++) {
         const c = configs[i];
         const label = `configs[${i}]`;
@@ -34,8 +39,11 @@ export function validateOptions({ speedApiKey, macaroonSecret, configs }) {
         if (!c.currency || typeof c.currency !== 'string') {
             throw new Error(`l402: ${label}.currency must be a non-empty string (e.g. 'USD', 'SATS')`);
         }
-        if (c.targetCurrency !== undefined && !VALID_TARGET_CURRENCIES.includes(c.targetCurrency)) {
-            throw new Error(`l402: ${label}.targetCurrency must be one of ${VALID_TARGET_CURRENCIES.join(', ')}`);
+
+        const key = `${configs[i].method.toUpperCase()}:${configs[i].path}`;
+        if (seen.has(key)) {
+            throw new Error(`l402: duplicate route label — ${key} is already defined`);
         }
+        seen.add(key);
     }
 }

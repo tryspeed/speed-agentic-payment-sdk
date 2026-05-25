@@ -42,6 +42,11 @@ export interface L402MiddlewareOptions {
   /** Hex-encoded secret used to sign and verify macaroons. */
   macaroonSecret: string;
   /**
+   * Macaroon TTL in milliseconds. Defaults to 10 minutes when omitted.
+   * Must be a positive number if provided.
+   */
+  caveatTtlMs?: number;
+  /**
    * Route-level payment rules.
    * Routes not listed here are passed through without a payment check.
    */

@@ -28,28 +28,28 @@ Express middleware that enforces [L402](https://docs.lightning.engineering/the-l
 
 L402 is an HTTP-native payment protocol built on Lightning Network. The flow has three steps:
 
-1. **Challenge** — a client makes a request to a protected endpoint without payment credentials. The middleware responds with `402 Payment Required`, a Lightning invoice (created via the Speed API), and a signed macaroon.
+1. **Challenge** — a client makes a request to a protected endpoint without payment credentials. The middleware responds with `402 Payment Required`, a Lightning invoice (created using your Speed account's API Key), and a signed macaroon.
 2. **Payment** — the client pays the Lightning invoice and receives a preimage (proof of payment).
 3. **Access** — the client retries the request with an `Authorization: L402 <macaroon>:<preimage>` header. The middleware verifies the macaroon signature, the caveats (method, path, amount, currency, expiry), and the preimage against the payment hash. On success the request is forwarded to your route handler.
 
-Responses to verified requests are cached for the duration of the macaroon's TTL (10 minutes), so replaying a valid credential returns the cached response instantly without hitting your handler again.
+> **Note:** Responses to verified requests are cached for the duration of the macaroon's TTL (default 10 minutes), so replaying a valid credential returns the cached response instantly without hitting your handler again.
 
 ---
 
 ## Prerequisites
 
 - **Node.js 18 or higher**
-- **Express 4 or higher**
-- **A Speed account and API key** — sign up and manage keys at [app.tryspeed.com/dashboard](https://app.tryspeed.com/dashboard)
+- **Express 4.19.2 or higher**
+- **A Speed account and API key** — sign up and manage keys at - [app.tryspeed.com/apikeys/restricted-keys](https://app.tryspeed.com/apikeys/restricted-keys)
 
 ### Getting a Speed API key
 
-1. Log in to the [Speed Web Application](https://app.tryspeed.com/dashboard).
-2. Select the mode — **Test** for development, **Live** for production.
-3. Navigate to **Developers → API keys → Standard keys**.
-4. Click **Reveal key** to copy your secret key (prefix `sk_test_…` or `sk_live_…`).
+1. Log in to the [Speed Merchant](https://app.tryspeed.com/dashboard).
+2. Navigate to **Developers → API keys → Standard keys**.
+3. Create a **Restricted Key** : Speed recommends using a restricted key (rk_live_...) for the speedApiKey option. While creating the restricted key, select Core → Payments as the module and grant Write permission.
 
-Use your **publishable key** or **secret key** as the `speedApiKey` option. The publishable key is sufficient for creating payments. Secret keys (`sk_test_…` / `sk_live_…`) work too but carry broader account privileges — prefer the publishable key when it covers your use case.
+Standard secret keys (sk_live_...) will also work, but they provide broader account privileges (including Send functionality).  Hence for better security and least-privilege access, we recommend using a restricted key.
+
 
 ---
 
@@ -83,7 +83,7 @@ app.use(
       {
         method: 'GET',
         path: '/api/report',
-        amount: 100,       // $1.00 USD
+        amount: 1,
         currency: 'USD',
         targetCurrency: 'SATS',
       },
@@ -108,7 +108,7 @@ Any route not listed in `configs` passes through freely without a payment check.
 
 | Option | Type | Required | Description |
 |---|---|---|---|
-| `speedApiKey` | `string` | Yes | Your Speed secret API key (`sk_test_…` or `sk_live_…`). |
+| `speedApiKey` | `string` | Yes | Your Speed API key (`rk_live_…` or `sk_live_…`). |
 | `macaroonSecret` | `string` | Yes | 32-byte hex-encoded secret used to sign and verify macaroons. Generate one with `npx l402-generate-secret`. |
 | `caveatTtlMs` | `number` | No | Macaroon TTL in milliseconds. Defaults to 10 minutes when omitted. Must be a positive number if provided. |
 | `configs` | `RouteConfig[]` | Yes | Array of route-level payment rules. |
@@ -117,10 +117,10 @@ Any route not listed in `configs` passes through freely without a payment check.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `method` | `string` | Yes | HTTP method to match, uppercase (e.g. `'GET'`, `'POST'`). |
+| `method` | `string` | Yes | HTTP method to match (e.g. `'GET'`, `'POST'`). Case-insensitive — normalized to uppercase automatically. |
 | `path` | `string` | Yes | [path-to-regexp](https://github.com/pillarjs/path-to-regexp) pattern (e.g. `'/api/resource/:id'`). |
-| `amount` | `number` | Yes | Payment amount in the smallest unit of `currency` (e.g. cents for `USD`, whole units for `SATS`). |
-| `currency` | `string` | Yes | ISO 4217 currency code for the payment amount (e.g. `'USD'`, `'EUR'`, `'SATS'`). |
+| `amount` | `number` | Yes | Payment amount you intend to collect.  |
+| `currency` | `string` | Yes | ISO 4217 [currency code](https://apidocs.tryspeed.com/reference/enum-base-currency) for the payment amount (e.g. `'USD'`, `'EUR'`, `'SATS'`). |
 | `targetCurrency` | `string` | No | Cryptocurrency to settle in: `'SATS'`, `'USDT'`, or `'USDC'`. Defaults to `'SATS'` when omitted. |
 
 **Example — charge $2.50 USD, settle in SATS:**
@@ -129,7 +129,7 @@ Any route not listed in `configs` passes through freely without a payment check.
 {
   method: 'POST',
   path: '/api/generate',
-  amount: 250,
+  amount: 2.5,
   currency: 'USD',
   targetCurrency: 'SATS',
 }
@@ -170,13 +170,11 @@ Rotate this secret if you suspect it has been compromised. All previously issued
 
 ## API key security
 
-Speed API keys carry full account privileges. Follow these practices:
-
 - **Never** embed secret keys in client-side code, public repositories, or anywhere outside a secure server environment.
-- Store keys in environment variables or a secrets manager (e.g. AWS Secrets Manager, HashiCorp Vault).
-- Use **Test mode keys** (`sk_test_…`) during development and **Live mode keys** (`sk_live_…`) in production only.
-- If a key is compromised, rotate it immediately from **Developers → API keys** in the [Speed dashboard](https://app.tryspeed.com/dashboard). A rotated key is permanently disabled; you cannot rotate the same key again within 24 hours.
 - Consider [restricted API keys](https://app.tryspeed.com/apikeys/restricted-keys) to limit the scope of what each key can do.
+- Store keys in environment variables or a secrets manager (e.g. AWS Secrets Manager, HashiCorp Vault).
+- If a key is compromised, rotate it immediately from the [Speed dashboard](https://app.tryspeed.com/dashboard).
+
 
 ---
 
@@ -195,7 +193,7 @@ l402Middleware({
 Recommended `.env` layout (use [dotenv](https://github.com/motdotla/dotenv) or your platform's secret injection):
 
 ```env
-SPEED_KEY=sk_test_...
+SPEED_KEY=rk_live_...
 SPEED_MACAROON_SECRET=<64-char hex from npx l402-generate-secret>
 ```
 
@@ -209,7 +207,7 @@ SPEED_MACAROON_SECRET=<64-char hex from npx l402-generate-secret>
 | `400` | `Authorization` header present but malformed or macaroon verification failed. | `{ "message": "Malformed 'authorization' header" }` |
 | `401` | Preimage does not match the payment hash in the macaroon. | `{ "message": "Invalid payment preimage" }` |
 | `409` | A request with the same macaroon is already being processed. | `{ "message": "Payment is already being processed" }` |
-| `500` | Speed API call failed when creating the invoice. | `{ "message": "Internal server error" }` |
+| `500` | Speed API call failed due to any reason. | `{ "message": "Internal server error" }` |
 
 ### WWW-Authenticate header format
 

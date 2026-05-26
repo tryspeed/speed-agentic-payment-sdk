@@ -1,4 +1,4 @@
-import { VALID_TARGET_CURRENCIES, MACAROON_SECRET_HEX_LENGTH } from './constants.js';
+import { MACAROON_SECRET_HEX_LENGTH } from './constants.js';
 
 const HEX_RE = new RegExp(`^[0-9a-fA-F]{${MACAROON_SECRET_HEX_LENGTH}}$`);
 

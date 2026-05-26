@@ -1,0 +1,63 @@
+{
+  "name": "@tryspeed/l402-express",
+  "version": "0.1.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "bin": {
+    "l402-generate-secret": "bin/generate-secret.js"
+  },
+  "scripts": {
+    "test": "node --test specs/test.js"
+  },
+  "author": "Speed <support@tryspeed.com>",
+  "license": "MIT",
+  "description": "Express middleware for L402 Lightning Network payments — issues Speed payment challenges, verifies macaroon credentials, and gates API access to paid requests only",
+  "keywords": [
+    "l402",
+    "lightning",
+    "bitcoin",
+    "payments",
+    "express",
+    "middleware",
+    "macaroon",
+    "speed"
+  ],
+  "homepage": "https://github.com/TrySpeed/speed-agentic-payment-sdk/tree/main/server/javascript/express#readme",
+  "bugs": {
+    "url": "https://github.com/TrySpeed/speed-agentic-payment-sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TrySpeed/speed-agentic-payment-sdk.git",
+    "directory": "server/javascript/express"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "constants.js",
+    "errors.js",
+    "macaroon.js",
+    "speed.js",
+    "validation.js",
+    "bin/"
+  ],
+  "type": "module",
+  "dependencies": {
+    "light-bolt11-decoder": "^3.2.0",
+    "macaroon": "^3.0.4",
+    "node-cache": "^5.1.2",
+    "path-to-regexp": "^8.4.2"
+  },
+  "peerDependencies": {
+    "express": ">=4.19.2"
+  }
+}

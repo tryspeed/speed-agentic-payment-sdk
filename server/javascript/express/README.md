@@ -1,6 +1,6 @@
-# @tryspeed/l402-express
+# @speeddev/l402-express
 
-[![npm version](https://img.shields.io/badge/npm-1.0.0-blue)](https://www.npmjs.com/package/@tryspeed/l402-express)
+[![npm version](https://img.shields.io/badge/npm-0.1.0-blue)](https://www.npmjs.com/package/@speeddev/l402-express)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node.js: >=18](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -56,7 +56,7 @@ Use your **publishable key** or **secret key** as the `speedApiKey` option. The 
 ## Installation
 
 ```bash
-npm install @tryspeed/l402-express
+npm install @speeddev/l402-express
 ```
 
 `express` is a peer dependency and must be installed separately if you have not done so already:
@@ -71,7 +71,7 @@ npm install express
 
 ```js
 import express from 'express';
-import l402Middleware from '@tryspeed/l402-express';
+import l402Middleware from '@speeddev/l402-express';
 
 const app = express();
 

@@ -64,7 +64,7 @@ export interface L402MiddlewareOptions {
  *
  * @example
  * ```ts
- * import l402Middleware from '@tryspeed/l402-express';
+ * import l402Middleware from '@speeddev/l402-express';
  *
  * app.use(l402Middleware({
  *   speedApiKey: process.env.SPEED_KEY!,

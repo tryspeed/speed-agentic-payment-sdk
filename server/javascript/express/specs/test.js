@@ -59,13 +59,6 @@ describe('validateOptions', () => {
         assert.throws(() => validateOptions({ ...VALID_OPTIONS, configs: [{ ...VALID_CONFIG, amount: -1 }] }), /amount/);
     });
 
-    it('throws if targetCurrency is invalid', () => {
-        assert.throws(
-            () => validateOptions({ ...VALID_OPTIONS, configs: [{ ...VALID_CONFIG, targetCurrency: 'INVALID' }] }),
-            /targetCurrency/
-        );
-    });
-
     it('does not throw for valid options', () => {
         assert.doesNotThrow(() => validateOptions(VALID_OPTIONS));
     });

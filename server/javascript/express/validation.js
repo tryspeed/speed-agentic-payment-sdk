@@ -30,6 +30,7 @@ export function validateOptions({ speedApiKey, macaroonSecret, caveatTtlMs, conf
         if (!c.method || typeof c.method !== 'string') {
             throw new Error(`l402: ${label}.method must be a non-empty string (e.g. 'GET')`);
         }
+        c.method = c.method.toUpperCase();
         if (!c.path || typeof c.path !== 'string') {
             throw new Error(`l402: ${label}.path must be a non-empty string`);
         }

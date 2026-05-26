@@ -38,7 +38,8 @@ export function verifyMacaroon(macaroon, routeConfig, macaroonSecret) {
       const [caveatKey, caveatValue] = caveat.split(' = ');
       if (caveatKey === CAVEAT_KEYS.PAYMENT_HASH) return;
       if (caveatKey === CAVEAT_KEYS.EXPIRES_AT) {
-        if (Date.now() > Number(caveatValue)) return `caveat not satisfied: ${caveat}`;
+        const expiresAt = Number(caveatValue);
+        if (isNaN(expiresAt) || Date.now() > expiresAt) return `caveat not satisfied: ${caveat}`;
         return;
       }
 

@@ -3,6 +3,7 @@ import { match } from 'path-to-regexp';
 import { createMacaroon, verifyMacaroon } from './macaroon.js';
 import { createSpeedInvoice } from './speed.js';
 import NodeCache from 'node-cache';
+import { webcrypto } from 'node:crypto';
 import { CAVEAT_KEYS, HEADERS, L402_SCHEME, HASH_ALGORITHM, MAX_CAVEATS } from './constants.js';
 import { ERROR_MESSAGES } from './errors.js';
 import { validateOptions } from './validation.js';
@@ -136,7 +137,7 @@ function extractCaveatFromMacaroon(macaroon, caveatKey) {
 }
 
 async function computePreimageHash(preimage) {
-    const hashBuffer = await crypto.subtle.digest(HASH_ALGORITHM, Buffer.from(preimage, 'hex'));
+    const hashBuffer = await webcrypto.subtle.digest(HASH_ALGORITHM, Buffer.from(preimage, 'hex'));
     return Buffer.from(hashBuffer).toString("hex");
 }
 

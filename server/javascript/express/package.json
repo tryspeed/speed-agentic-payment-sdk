@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
   "bin": {
     "l402-generate-secret": "bin/generate-secret.js"
   },
@@ -24,12 +30,22 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/speed-l402/speed-agentic-payment-sdk.git",
+    "url": "https://github.com/TrySpeed/speed-agentic-payment-sdk.git",
     "directory": "server/javascript/express"
   },
   "engines": {
     "node": ">=18"
   },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "constants.js",
+    "errors.js",
+    "macaroon.js",
+    "speed.js",
+    "validation.js",
+    "bin/"
+  ],
   "type": "module",
   "dependencies": {
     "light-bolt11-decoder": "^3.2.0",

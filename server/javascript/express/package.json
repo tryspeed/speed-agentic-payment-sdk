@@ -28,6 +28,10 @@
     "macaroon",
     "speed"
   ],
+  "homepage": "https://github.com/TrySpeed/speed-agentic-payment-sdk/tree/main/server/javascript/express#readme",
+  "bugs": {
+    "url": "https://github.com/TrySpeed/speed-agentic-payment-sdk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/TrySpeed/speed-agentic-payment-sdk.git",

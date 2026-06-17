@@ -5,4 +5,5 @@ on:
 jobs:
   issue-gate:
     uses: TrySpeed/reusable-workflow/.github/workflows/require-linked-issue.yml@latest
-    secrets: inherit
+    secrets:
+      NPM_TOKEN: ${{ secrets.ISSUE_GATE_TOKEN }}
